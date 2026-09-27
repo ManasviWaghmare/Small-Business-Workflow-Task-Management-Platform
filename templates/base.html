@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Workflow Manager{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<nav class="topnav">
+  <a class="brand" href="/">🏪 TaskFlow <span>Small Business · Grocery focus</span></a>
+  <div class="links">
+    <a href="/" class="{{ 'active' if request.path=='/' else '' }}">Dashboard</a>
+    <a href="/tasks" class="{{ 'active' if request.path.startswith('/tasks') else '' }}">Tasks</a>
+    <a href="/inventory" class="{{ 'active' if request.path.startswith('/inventory') else '' }}">Stock</a>
+    <a href="/procurement" class="{{ 'active' if request.path.startswith('/procurement') else '' }}">Vendors</a>
+    <a href="/orders" class="{{ 'active' if request.path.startswith('/orders') else '' }}">Orders</a>
+    <a href="/growth" class="{{ 'active' if request.path.startswith('/growth') else '' }}">Growth</a>
+    <a href="/customers" class="{{ 'active' if request.path.startswith('/customers') else '' }}">Customers</a>
+    <a href="/checklists" class="{{ 'active' if request.path.startswith('/checklists') else '' }}">Daily</a>
+    <a href="/employees" class="{{ 'active' if request.path.startswith('/employees') else '' }}">Team</a>
+  </div>
+</nav>
+<div id="offline-bar" hidden>📴 Offline — forms are saved locally and will sync when reconnected.</div>
+<main class="container">
+{% block content %}{% endblock %}
+</main>
+<footer><p>TaskFlow MVP • FITFEST 2026 • Small Business Workflow &amp; Task Management Platform — micro-grocery focus • Flask + SQLite • Cloud Run ready</p></footer>
+<script>
+// Offline-first: indicator + draft persistence for textareas/inputs
+function updateOnline(){ document.getElementById('offline-bar').hidden = navigator.onLine; }
+window.addEventListener('online', updateOnline); window.addEventListener('offline', updateOnline); updateOnline();
+document.querySelectorAll('form.form textarea, form.form input[name=title]').forEach(el=>{
+  const k = 'draft:' + location.pathname + ':' + (el.name||'field');
+  el.value = el.value || localStorage.getItem(k) || '';
+  el.addEventListener('input', ()=>{ try{ localStorage.setItem(k, el.value);}catch(e){} });
+  el.closest('form').addEventListener('submit', ()=>{ try{ localStorage.removeItem(k);}catch(e){} });
+});
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/static/sw.js').catch(()=>{}); }
+</script>
+</body>
+</html>

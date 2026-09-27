@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Daily checklists - TaskFlow{% endblock %}
+{% block content %}
+<h1>✅ Daily Retail Checklists ({{ done }}/{{ total }})</h1>
+<p class="muted">Recurring store routines — Morning Opening, Freezer Logs, End-of-Day Cash. Generate today's set, tick off on the shop floor (works offline).</p>
+<form method="get" action="/checklists" class="form row"><input type="date" name="day" value="{{ day }}"><button class="btn" type="submit">View day</button></form>
+<div class="panel"><h2>Generate template for {{ day }}</h2>
+<div class="row">{% for t in templates %}<form method="post" action="/checklists/generate"><input type="hidden" name="template" value="{{ t }}"><input type="hidden" name="day" value="{{ day }}"><button class="btn" type="submit">+ {{ t }}</button></form>{% endfor %}
+<form method="post" action="/checklists/clear"><input type="hidden" name="day" value="{{ day }}"><button class="btn danger-btn" type="submit" onclick="return confirm('Clear day?')">Clear day</button></form></div></div>
+{% for tpl, items in grouped.items() %}
+<div class="panel"><h2>{{ tpl }}</h2>
+{% for i in items %}
+<form method="post" action="/checklists/{{ i['id'] }}/toggle"><button class="check {% if i['done'] %}on{% endif %}" type="submit">{% if i['done'] %}☑{% else %}☐{% endif %} {{ i['item'] }}</button></form>
+{% endfor %}</div>
+{% else %}<div class="panel"><p class="muted">No checklist for this day yet — generate one above.</p></div>{% endfor %}
+{% endblock %}

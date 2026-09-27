@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Growth - TaskFlow{% endblock %}
+{% block content %}
+<h1>🚀 Growth Hub — Revenue Engine</h1>
+<p class="muted">Orders: <b>{{ total_orders }}</b> (delivered {{ delivered }}) • Pitch: WhatsApp ordering + bundling + flash sales + khata loyalty + group buying lift daily volume.</p>
+<div class="grid2">
+<div class="panel"><h2>🎯 Smart bundling rules</h2>
+<form method="post" action="/promotions/add" class="form row">
+<input name="title" placeholder="Rule name *" required><input name="trigger_item" placeholder="If order has… (tea)"><input name="suggest_item" placeholder="Suggest… (Sugar+Milk)"><input name="offer" placeholder="Offer (10% off)"><button class="btn primary" type="submit">Add</button></form>
+<table>{% for p in promos %}<tr><td><b>{{ p['title'] }}</b><br><small>if <b>{{ p['trigger_item'] }}</b> → {{ p['suggest_item'] }} ({{ p['offer'] }}) {% if not p['active'] %}<span class="pill">off</span>{% endif %}</small></td>
+<td><form method="post" action="/promotions/{{ p['id'] }}/toggle"><button class="btn small">On/Off</button></form></td></tr>{% endfor %}</table></div>
+<div class="panel"><h2>⚡ Flash sales (expiry auto-trigger)</h2>
+{% for f in flashes %}<div class="kcard"><b>{{ f['item'] }}</b> — {{ f['discount'] }} <small>exp {{ f['expiry'] }}</small><br>
+<small class="muted">{{ f['message'] }}</small>
+<div class="row" style="margin-top:6px"><form method="post" action="/flash/{{ f['id'] }}/toggle"><button class="btn small">{% if f['active'] %}Pause{% else %}Resume{% endif %}</button></form>
+<button class="btn small" onclick="navigator.clipboard.writeText({{ f['message']|tojson }});this.textContent='Copied!'">Copy broadcast</button></div></div>
+{% else %}<p class="muted">No flash sales yet — they auto-generate when stock is ≤2 days from expiry.</p>{% endfor %}</div>
+</div>
+<div class="grid2">
+<div class="panel"><h2>👥 Group buying (neighbours bulk deal)</h2>
+<form method="post" action="/groups/add" class="form row">
+<input name="title" placeholder="Deal title *" required><input name="item" placeholder="Item (Basmati 25kg)"><input name="target_qty" placeholder="Target (10 sacks)"><input name="price" placeholder="Price (Rs 1450/sack)"><button class="btn primary" type="submit">Launch</button></form>
+{% for gb in groups %}<div class="kcard"><b>{{ gb['title'] }}</b> — {{ gb['item'] }} <span class="pill">{{ gb['status'] }}</span><br>
+<small>Joined: {{ members.get(gb['id'],[])|length }} ({{ gb['joined_qty'] }}/{{ gb['target_qty'] }}) • {{ gb['price'] }}</small>
+{% for m in members.get(gb['id'],[]) %}<br><small>• {{ m['customer_name'] }} — {{ m['qty'] }}</small>{% endfor %}
+{% if gb['status']=='Open' %}<div class="row" style="margin-top:6px">
+<form method="post" action="/groups/{{ gb['id'] }}/join" class="form row"><input name="customer_name" placeholder="Name"><input name="qty" placeholder="Qty" value="1"><button class="btn small" type="submit">Join</button></form>
+<form method="post" action="/groups/{{ gb['id'] }}/close"><button class="btn small" type="submit">Close & fulfil</button></form></div>{% endif %}</div>
+{% endfor %}</div>
+<div class="panel"><h2>💛 Retention (no order in 15 days)</h2>
+<table>{% for c in reten %}<tr><td><b>{{ c['name'] }}</b><br><small>{{ c['phone'] }} • last {{ c['last_order'] or 'never' }} • {{ c['total_orders'] }} orders</small></td></tr>
+{% else %}<tr><td class="muted">All regulars active. Nice!</td></tr>{% endfor %}</table>
+<p class="muted">Retention tasks auto-appear on the dashboard task list. Khata ledger lives under <a href="/customers">Customers →</a></p></div>
+</div>
+{% endblock %}

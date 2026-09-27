@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Team - TaskFlow{% endblock %}
+{% block content %}
+<h1>Team</h1>
+<div class="panel">
+<h2>➕ Add member</h2>
+<form method="post" action="/employees/add" class="form row">
+  <input name="name" placeholder="Name *" required>
+  <input name="role" placeholder="Role (e.g. Sales Staff)">
+  <input name="phone" placeholder="Phone">
+  <button class="btn primary" type="submit">Add</button>
+</form>
+</div>
+<div class="panel">
+<table><tr><th>Name</th><th>Role</th><th>Phone</th><th>Pending</th><th>Overdue</th><th></th></tr>
+{% for e in employees %}
+<tr><td><b>{{ e['name'] }}</b></td><td>{{ e['role'] }}</td><td>{{ e['phone'] }}</td>
+<td>{{ counts[e['id']][0] }}</td><td>{{ counts[e['id']][1] }}</td>
+<td><form method="post" action="/employees/{{ e['id'] }}/delete" onsubmit="return confirm('Remove?')"><button class="btn small danger-btn">Remove</button></form></td></tr>
+{% else %}<tr><td colspan="6" class="muted">No team members yet.</td></tr>{% endfor %}
+</table>
+</div>
+{% endblock %}

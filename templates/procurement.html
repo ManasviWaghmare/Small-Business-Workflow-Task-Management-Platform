@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Vendors - TaskFlow{% endblock %}
+{% block content %}
+<h1>🚚 Vendor Procurement Pipeline</h1>
+<p class="muted">Track wholesale orders: PO Raised → Shipped → Received &amp; Verified. Raising a PO also creates a follow-up task.</p>
+<div class="grid2">
+<div class="panel"><h2>➕ Add vendor</h2>
+<form method="post" action="/vendors/add" class="form">
+<input name="name" placeholder="Vendor name *" required><input name="category" placeholder="Category"><input name="phone" placeholder="Phone">
+<button class="btn primary" type="submit">Add vendor</button></form></div>
+<div class="panel"><h2>➕ Raise purchase order</h2>
+<form method="post" action="/po/add" class="form">
+<select name="vendor_id">{% for v in vendors %}<option value="{{ v['id'] }}">{{ v['name'] }}</option>{% endfor %}</select>
+<input name="item" placeholder="Item + qty *" required><input name="qty" placeholder="Qty (e.g. 40 packets)"><input name="due_date" type="date">
+<button class="btn primary" type="submit">Raise PO</button></form></div>
+</div>
+<div class="kanban">
+{% for s in po_statuses %}
+<div class="panel"><h2>{{ s }}</h2>
+{% for p in cols[s] %}
+<div class="kcard"><b>{{ p['item'] }}</b><br><small>{{ p['vendor_name'] or 'No vendor' }} • {{ p['qty'] }} • due {{ p['due_date'] or '—' }}</small>
+<div class="row" style="margin-top:6px">
+{% if s != 'Received & Verified' %}<form method="post" action="/po/{{ p['id'] }}/advance"><button class="btn small">Move →</button></form>{% else %}<span class="pill">Done ✓</span>{% endif %}
+<form method="post" action="/po/{{ p['id'] }}/delete" onsubmit="return confirm('Delete?')"><button class="btn small danger-btn">✕</button></form>
+</div></div>
+{% else %}<p class="muted">Empty</p>{% endfor %}
+</div>
+{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Customers - TaskFlow{% endblock %}
+{% block content %}
+<h1>📒 Customers & Khata</h1>
+<p class="muted">Monthly-credit ledger + loyalty. Every order auto-updates visits; inactive 15-day regulars get retention tasks.</p>
+<div class="panel"><h2>➕ Add customer</h2>
+<form method="post" action="/customers/add" class="form row">
+<input name="name" placeholder="Name *" required><input name="phone" placeholder="Phone"><input name="address" placeholder="Address"><button class="btn primary" type="submit">Add</button></form></div>
+<div class="panel"><table><tr><th>Customer</th><th>Orders</th><th>Last order</th><th>Khata (Rs)</th><th></th></tr>
+{% for c in customers %}<tr><td><b>{{ c['name'] }}</b><br><small>{{ c['phone'] }} • {{ c['address'] }}</small></td>
+<td>{{ c['total_orders'] }}</td><td>{{ c['last_order'] or '—' }}</td><td>{% if c['khata_balance']>0 %}<span class="pill Overdue">Rs {{ c['khata_balance'] }}</span>{% else %}clear{% endif %}</td>
+<td class="actions"><form method="post" action="/customers/{{ c['id'] }}/khata" class="form row"><input type="hidden" name="kind" value="credit"><input name="amount" type="number" step="1" placeholder="+ credit"><button class="btn small" type="submit">+Khata</button></form>
+<form method="post" action="/customers/{{ c['id'] }}/khata" class="form row"><input type="hidden" name="kind" value="paid"><input name="amount" type="number" step="1" placeholder="− paid"><button class="btn small" type="submit">−Paid</button></form></td></tr>
+{% else %}<tr><td colspan="5" class="muted">No customers yet — they auto-appear from orders.</td></tr>{% endfor %}</table></div>
+{% endblock %}
