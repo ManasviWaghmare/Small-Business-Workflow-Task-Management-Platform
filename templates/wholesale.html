@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Wholesale - TaskFlow{% endblock %}
+{% block content %}
+<h1>Wholesaler bills</h1>
+<p class="muted">Enter the supplier's bill. Rates auto-calculate (rate × qty), and stock + shop rates update themselves.</p>
+<div class="panel">
+<h2>+ New wholesaler bill</h2>
+<form method="post" action="/wholesale/create" class="form" enctype="multipart/form-data">
+<div class="row">
+<select name="vendor_id"><option value="">Select supplier…</option>{% for v in vendors %}<option value="{{ v['id'] }}">{{ v['name'] }}</option>{% endfor %}</select>
+<input name="bill_no" placeholder="Bill no."><input name="bill_date" type="date"></div>
+<table id="wrows"><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Rate Rs</th><th>Amount Rs</th></tr>
+{% for n in range(5) %}<tr><td><input name="item_name" placeholder="e.g. Sugar"></td><td><input name="qty" type="number" step="0.01" placeholder="0"></td>
+<td><input name="unit" placeholder="kg" value="kg"></td><td><input name="rate" type="number" step="0.01" placeholder="0"></td><td><input name="amount" type="number" step="0.01" placeholder="auto"></td></tr>{% endfor %}</table>
+<button class="btn small" type="button" onclick="var t=document.getElementById('wrows');t.insertAdjacentHTML('beforeend',t.rows[1].outerHTML)">+ Add row</button>
+<label class="muted">Bill photo (optional): <input type="file" name="photo" accept="image/*"></label>
+<button class="btn primary" type="submit">Save + update stock</button></form>
+</div>
+<div class="panel"><h2>Recent wholesaler bills</h2>
+<table><tr><th>No.</th><th>Supplier</th><th>Bill no.</th><th>Total</th><th>Date</th><th></th></tr>
+{% for w in wbills %}<tr><td><b>#{{ w['id'] }}</b></td><td>{{ w['vendor_name'] or '—' }}</td><td>{{ w['bill_no'] }}</td><td>Rs {{ w['total'] }}</td><td>{{ w['bill_date'] }}</td>
+<td><a class="btn small" href="/wholesale/{{ w['id'] }}">Open</a></td></tr>
+{% else %}<tr><td colspan="6" class="muted">No wholesaler bills yet.</td></tr>{% endfor %}</table></div>
+{% endblock %}

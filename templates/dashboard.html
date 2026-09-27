@@ -48,7 +48,7 @@
         {% else %}<p class="muted">No sale running.</p>{% endif %}
         {% if reten %}<p><b>{{ reten|length }}</b> quiet customers (15+ days).</p>{% endif %}
         {% if groups %}<p><b>Deals:</b> {% for gb in groups %}{{ gb['title'] }}{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
-        <p class="muted">Khata pending: Rs {{ khata_total }} • <a href="/growth">Growth →</a></p>
+        <p class="muted">Khata pending: Rs {{ khata_total }} • Today: Rs {{ today_sales }} from {{ today_bills }} bills • <a href="/growth">Growth →</a> <a href="/billing">Billing →</a></p>
       </div>
     </div>
   </div>

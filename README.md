@@ -32,6 +32,14 @@ Built for FITFEST 2026 Hackathon (Solo, ~4 hr MVP).
 - Khata + loyalty (`/customers`): credit ledger, visit tracking, 15-day inactive → retention tasks
 - Group buying (`/growth`): society bulk deals, join flow, close → fulfilment task
 
+## Billing (customer + wholesaler)
+- Customer bills (`/billing`): pick stock items + qty, discount, auto total, stock reduces itself
+- Printable invoices (`/bills/<id>`): Print / Save-as-PDF button, clean print layout
+- Customer list photos: attach the list photo sent by the customer on orders and bills
+- Wholesaler bills (`/wholesale`): enter supplier bill; missing rate/amount auto-calculates
+- Auto rates + stock: matched stock items get new rate and added qty; new names become new stock items
+- Uploads: `static/uploads/` (png/jpg/webp, 4MB max; ephemeral on Cloud Run)
+
 ## Tech Stack
 - Backend: Flask 3 (Python)
 - DB: SQLite (stdlib `sqlite3`, no ORM — zero-config, file at `workflow.db` locally / `/tmp/workflow.db` on Cloud Run)

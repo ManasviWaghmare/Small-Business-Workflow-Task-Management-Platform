@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Billing - TaskFlow{% endblock %}
+{% block content %}
+<h1>Billing</h1>
+<p class="muted">Make a customer bill from shop stock. Stock reduces automatically.</p>
+<div class="panel">
+<h2>+ New bill</h2>
+<form method="post" action="/billing/create" class="form" enctype="multipart/form-data">
+<div class="row"><input name="customer_name" placeholder="Customer name"><input name="phone" placeholder="Phone">
+<input name="discount" type="number" step="0.01" placeholder="Discount Rs" value="0"></div>
+<table><tr><th>Item</th><th>Price</th><th>In stock</th><th>Qty</th></tr>
+{% for i in items %}
+<tr><td><b>{{ i['name'] }}</b><br><small class="muted">{{ i['unit'] }}</small></td>
+<td>Rs {{ i['price'] }}</td><td>{{ i['stock_qty'] }}</td>
+<td><input name="qty_{{ i['id'] }}" type="number" step="0.1" min="0" max="{{ i['stock_qty'] }}" placeholder="0" style="max-width:90px"></td></tr>
+{% endfor %}</table>
+<label class="muted">Customer list photo (optional): <input type="file" name="photo" accept="image/*"></label>
+<button class="btn primary" type="submit">Generate bill</button></form>
+</div>
+<div class="panel"><h2>Recent bills</h2>
+<table><tr><th>No.</th><th>Customer</th><th>Total</th><th>Date</th><th></th></tr>
+{% for b in bills %}<tr><td><b>#{{ b['id'] }}</b></td><td>{{ b['customer_name'] }}</td><td>Rs {{ b['total'] }}</td><td>{{ b['created_at'][:10] }}</td>
+<td class="actions"><a class="btn small" href="/bills/{{ b['id'] }}">Open</a>
+<form method="post" action="/bills/{{ b['id'] }}/delete" onsubmit="return confirm('Delete?')"><button class="btn small danger-btn">✕</button></form></td></tr>
+{% else %}<tr><td colspan="5" class="muted">No bills yet.</td></tr>{% endfor %}</table></div>
+{% endblock %}

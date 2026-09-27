@@ -21,6 +21,8 @@
       <a href="/" class="{{ 'on' if request.path=='/' else '' }}">Dashboard</a>
       <a href="/tasks" class="{{ 'on' if request.path.startswith('/tasks') else '' }}">My Tasks</a>
       <a href="/orders" class="{{ 'on' if request.path.startswith('/orders') else '' }}">Orders</a>
+      <a href="/billing" class="{{ 'on' if request.path.startswith('/billing') or request.path.startswith('/bills') else '' }}">Billing</a>
+      <a href="/wholesale" class="{{ 'on' if request.path.startswith('/wholesale') else '' }}">Wholesale</a>
       <a href="/inventory" class="{{ 'on' if request.path.startswith('/inventory') else '' }}">Stock</a>
       <a href="/procurement" class="{{ 'on' if request.path.startswith('/procurement') else '' }}">Vendors</a>
       <a href="/checklists" class="{{ 'on' if request.path.startswith('/checklists') else '' }}">Daily List</a>

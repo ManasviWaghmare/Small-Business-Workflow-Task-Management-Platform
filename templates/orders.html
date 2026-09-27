@@ -4,16 +4,18 @@
 <h1>🛒 Order Packing & Fulfillment</h1>
 <p class="muted">Paste a customer WhatsApp message — it is parsed into a structured order + packing task automatically (WhatsApp ingestion demo).</p>
 <div class="panel"><h2>📩 New order (manual or WhatsApp paste)</h2>
-<form method="post" action="/orders/add" class="form">
+<form method="post" action="/orders/add" class="form" enctype="multipart/form-data">
 <div class="row"><input name="customer_name" placeholder="Customer name"><input name="phone" placeholder="Phone">
 <select name="employee_id"><option value="">Assign packer…</option>{% for e in employees %}<option value="{{ e['id'] }}">{{ e['name'] }}</option>{% endfor %}</select></div>
 <textarea name="whatsapp_text" placeholder="Paste WhatsApp msg, e.g.&#10;Sunita Joshi&#10;2kg atta&#10;1L oil&#10;97650 12345"></textarea>
 <textarea name="items_text" placeholder="…or type picking list directly (one item per line)"></textarea>
+<label class="muted">Customer list photo (optional): <input type="file" name="photo" accept="image/*"></label>
 <button class="btn primary" type="submit">Create order + packing task</button></form></div>
 <div class="panel"><table><tr><th>Order</th><th>Picking checklist</th><th>Status</th><th></th></tr>
 {% for o in orders %}
 <tr><td><b>#{{ o['id'] }} {{ o['customer_name'] }}</b><br><small>{{ o['phone'] }} • {{ o['created_at'] }}</small></td>
 <td><small>{{ o['items_text'].replace('\n','<br>')|safe }}</small>
+{% if o['photo'] %}<br><a href="{{ url_for('static', filename=o['photo']) }}"><img src="{{ url_for('static', filename=o['photo']) }}" class="shot"></a>{% endif %}
 {% if bundles.get(o['id']) %}<br>{% for b in bundles[o['id']] %}<span class="pill High">Upsell: {{ b['suggest'] }} ({{ b['offer'] }})</span>{% endfor %}{% endif %}</td>
 <td><span class="pill">{{ o['status'] }}</span></td>
 <td class="actions">{% if o['status'] != 'Delivered' %}<form method="post" action="/orders/{{ o['id'] }}/advance"><button class="btn small">Next →</button></form>{% else %}✓{% endif %}

@@ -11,16 +11,18 @@
   <input name="stock_qty" type="number" step="0.1" placeholder="Qty" value="0">
   <input name="unit" placeholder="Unit (kg/packets)" value="pcs">
   <input name="low_threshold" type="number" step="0.1" placeholder="Low-stock at" value="5">
+  <input name="price" type="number" step="0.01" placeholder="Price Rs" value="0">
   <input name="expiry_date" type="date">
   <button class="btn primary" type="submit">Add</button>
 </form>
 </div>
 <div class="panel">
-<table><tr><th>Item</th><th>Stock</th><th>Expiry</th><th>Alert</th><th></th></tr>
+<table><tr><th>Item</th><th>Stock</th><th>Price</th><th>Expiry</th><th>Alert</th><th></th></tr>
 {% for i in items %}
 <tr class="{% if i['stock_qty'] <= i['low_threshold'] %}overdue-row{% endif %}">
 <td><b>{{ i['name'] }}</b><br><small>{{ i['category'] }}</small></td>
 <td>{{ i['stock_qty'] }} {{ i['unit'] }} <small class="muted">(min {{ i['low_threshold'] }})</small></td>
+<td><form method="post" action="/inventory/{{ i['id'] }}/price" class="form row" style="flex-wrap:nowrap">Rs <input name="price" type="number" step="0.01" value="{{ i['price'] }}" style="max-width:80px"><button class="btn small" type="submit">Set</button></form></td>
 <td>{{ i['expiry_date'] or '—' }}</td>
 <td>{% if i['stock_qty'] <= i['low_threshold'] %}<span class="pill Overdue">LOW</span>{% endif %}{% if i['expiry_date'] and i['expiry_date'] <= today %}<span class="pill Overdue">EXPIRED?</span>{% endif %}</td>
 <td class="actions">
@@ -28,7 +30,7 @@
 <form method="post" action="/inventory/{{ i['id'] }}/stock"><input type="hidden" name="delta" value="-1"><button class="btn small">−1</button></form>
 <form method="post" action="/inventory/{{ i['id'] }}/delete" onsubmit="return confirm('Delete?')"><button class="btn small danger-btn">✕</button></form>
 </td></tr>
-{% else %}<tr><td colspan="5" class="muted">No stock items yet.</td></tr>{% endfor %}
+{% else %}<tr><td colspan="6" class="muted">No stock items yet.</td></tr>{% endfor %}
 </table>
 </div>
 {% endblock %}

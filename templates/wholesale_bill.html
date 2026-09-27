@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Wholesaler bill #{{ w['id'] }} - TaskFlow{% endblock %}
+{% block content %}
+<div class="panel invoice">
+<div class="invohead"><div><h1>Wholesaler bill #{{ w['id'] }}</h1><p class="muted">{{ w['vendor_name'] or 'No supplier' }} • Bill no. {{ w['bill_no'] }} • {{ w['bill_date'] }}</p></div>
+<div style="text-align:right"><b>Total: Rs {{ w['total'] }}</b></div></div>
+<table><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>
+{% for l in lines %}<tr><td>{{ l['item_name'] }}</td><td>{{ l['qty'] }} {{ l['unit'] }}</td><td>Rs {{ l['rate'] }}</td><td>Rs {{ l['amount'] }}</td></tr>{% endfor %}</table>
+{% if w['photo'] %}<p>Bill photo:<br><img src="{{ url_for('static', filename=w['photo']) }}" class="shot"></p>{% endif %}
+<div class="noprint row"><button class="btn primary" onclick="window.print()">Print / Save PDF</button>
+<a class="btn" href="/wholesale">Back</a>
+<form method="post" action="/wholesale/{{ w['id'] }}/delete" onsubmit="return confirm('Delete?')"><button class="btn danger-btn">Delete</button></form></div>
+</div>
+{% endblock %}

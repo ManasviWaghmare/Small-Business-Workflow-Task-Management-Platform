@@ -7,6 +7,7 @@ from collections import Counter
 from datetime import date, datetime, timedelta
 from flask import Flask, g, redirect, render_template, request, url_for, jsonify, session
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if os.getenv("K_SERVICE") or os.getenv("PORT"):
@@ -36,6 +37,23 @@ CHECKLIST_TEMPLATES = {
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "dev-key-change-me")
+app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024
+
+UPLOAD_DIR = os.path.join(BASE_DIR, "static", "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+ALLOWED_EXT = {"png", "jpg", "jpeg", "webp"}
+
+
+def save_photo(f):
+    """Save an uploaded list/bill photo, return its static path (or '')."""
+    if not f or not getattr(f, "filename", ""):
+        return ""
+    ext = f.filename.rsplit(".", 1)[-1].lower() if "." in f.filename else ""
+    if ext not in ALLOWED_EXT:
+        return ""
+    name = datetime.now().strftime("%Y%m%d%H%M%S%f") + "_" + secure_filename(f.filename)[-30:]
+    f.save(os.path.join(UPLOAD_DIR, name))
+    return "uploads/" + name
 
 PUBLIC_PATHS = ("/login", "/healthz")
 
@@ -118,12 +136,24 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT, bill_id INTEGER REFERENCES bills(id) ON DELETE CASCADE,
             item_name TEXT NOT NULL, qty REAL DEFAULT 1, unit TEXT DEFAULT 'pcs',
             price REAL DEFAULT 0, amount REAL DEFAULT 0);
+        CREATE TABLE IF NOT EXISTS wholesaler_bills (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, vendor_id INTEGER REFERENCES vendors(id) ON DELETE SET NULL,
+            bill_no TEXT DEFAULT '', bill_date TEXT DEFAULT '', subtotal REAL DEFAULT 0,
+            total REAL DEFAULT 0, photo TEXT DEFAULT '',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP);
+        CREATE TABLE IF NOT EXISTS wholesaler_bill_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, bill_id INTEGER REFERENCES wholesaler_bills(id) ON DELETE CASCADE,
+            item_name TEXT NOT NULL, qty REAL DEFAULT 0, unit TEXT DEFAULT 'pcs',
+            rate REAL DEFAULT 0, amount REAL DEFAULT 0);
         """
     )
     db.commit()
     # lightweight migration for DBs created before growth layer
     for stmt in [
         "ALTER TABLE customer_orders ADD COLUMN customer_id INTEGER",
+        "ALTER TABLE inventory ADD COLUMN price REAL DEFAULT 0",
+        "ALTER TABLE customer_orders ADD COLUMN photo TEXT DEFAULT ''",
+        "ALTER TABLE bills ADD COLUMN photo TEXT DEFAULT ''",
     ]:
         try: db.execute(stmt)
         except sqlite3.OperationalError: pass
@@ -155,12 +185,12 @@ def init_db():
         db.commit()
     if db.execute("SELECT COUNT(*) c FROM inventory").fetchone()[0] == 0:
         today = date.today()
-        db.executemany("INSERT INTO inventory (name, category, stock_qty, unit, low_threshold, expiry_date) VALUES (?,?,?,?,?,?)", [
-            ("Amul Milk 500ml", "Dairy", 8, "packets", 20, (today + timedelta(days=2)).isoformat()),
-            ("Curd Cup 400g", "Dairy", 25, "cups", 15, (today + timedelta(days=3)).isoformat()),
-            ("Wheat Atta 5kg", "Dry goods", 4, "bags", 10, ""),
-            ("Basmati Rice 1kg", "Dry goods", 30, "packets", 10, ""),
-            ("Tomato", "Vegetables", 6, "kg", 8, (today + timedelta(days=1)).isoformat())])
+        db.executemany("INSERT INTO inventory (name, category, stock_qty, unit, low_threshold, expiry_date, price) VALUES (?,?,?,?,?,?,?)", [
+            ("Amul Milk 500ml", "Dairy", 8, "packets", 20, (today + timedelta(days=2)).isoformat(), 27),
+            ("Curd Cup 400g", "Dairy", 25, "cups", 15, (today + timedelta(days=3)).isoformat(), 35),
+            ("Wheat Atta 5kg", "Dry goods", 4, "bags", 10, "", 240),
+            ("Basmati Rice 1kg", "Dry goods", 30, "packets", 10, "", 85),
+            ("Tomato", "Vegetables", 6, "kg", 8, (today + timedelta(days=1)).isoformat(), 40)])
         db.commit()
     if db.execute("SELECT COUNT(*) c FROM purchase_orders").fetchone()[0] == 0:
         v = db.execute("SELECT id FROM vendors LIMIT 1").fetchone()[0]
@@ -359,12 +389,15 @@ def dashboard():
     reten = retention_due(db)
     groups = db.execute("SELECT * FROM group_buys WHERE status='Open' ORDER BY id DESC").fetchall()
     khata_total = db.execute("SELECT COALESCE(SUM(khata_balance),0) s FROM customers").fetchone()["s"]
+    ts = db.execute("SELECT COALESCE(SUM(total),0) s, COUNT(*) c FROM bills WHERE date(created_at)=?", (today_str(),)).fetchone()
+    today_sales, today_bills = ts["s"], ts["c"]
     return render_template("dashboard.html", total=total, done=done, pending=pending, overdue=overdue,
                            due_today=due_today, completion=completion, by_priority=by_priority, by_status=by_status,
                            per_employee=per_employee, recent=recent, today=today_str(), low_stock=low_stock,
                            expiring=expiring, forecast=forecast, new_orders=new_orders, open_pos=open_pos,
                            cl_done=cl_done, cl_total=cl_total, flash=flash, reten=reten,
-                           groups=groups, khata_total=khata_total, upcoming=upcoming)
+                           groups=groups, khata_total=khata_total, upcoming=upcoming,
+                           today_sales=today_sales, today_bills=today_bills)
 
 
 @app.route("/tasks")
@@ -486,10 +519,22 @@ def inventory_add():
     db = get_db()
     name = request.form.get("name", "").strip()
     if name:
-        db.execute("INSERT INTO inventory (name, category, stock_qty, unit, low_threshold, expiry_date) VALUES (?,?,?,?,?,?)",
+        try: price = float(request.form.get("price") or 0)
+        except ValueError: price = 0
+        db.execute("INSERT INTO inventory (name, category, stock_qty, unit, low_threshold, expiry_date, price) VALUES (?,?,?,?,?,?,?)",
                    (name, request.form.get("category", ""), float(request.form.get("stock_qty") or 0),
-                    request.form.get("unit", "pcs"), float(request.form.get("low_threshold") or 5), request.form.get("expiry_date", "")))
+                    request.form.get("unit", "pcs"), float(request.form.get("low_threshold") or 5), request.form.get("expiry_date", ""), price))
         db.commit(); run_stock_alerts(db)
+    return redirect(url_for("inventory_list"))
+
+
+@app.route("/inventory/<int:iid>/price", methods=["POST"])
+def inventory_price(iid):
+    db = get_db()
+    try: price = float(request.form.get("price") or 0)
+    except ValueError: price = 0
+    db.execute("UPDATE inventory SET price=? WHERE id=?", (price, iid))
+    db.commit()
     return redirect(url_for("inventory_list"))
 
 
@@ -580,8 +625,9 @@ def order_add():
     name = request.form.get("customer_name", "").strip() or (parsed["customer_name"] if parsed else "Walk-in")
     phone = request.form.get("phone", "").strip() or (parsed["phone"] if parsed else "")
     if parsed: items = parsed["items_text"]
-    if not items: return redirect(url_for("orders"))
-    cur = db.execute("INSERT INTO customer_orders (customer_name, phone, items_text, status) VALUES (?,?,?,?)", (name, phone, items, "New"))
+    if not items and not request.files.get("photo"): return redirect(url_for("orders"))
+    photo = save_photo(request.files.get("photo"))
+    cur = db.execute("INSERT INTO customer_orders (customer_name, phone, items_text, status, photo) VALUES (?,?,?,?,?)", (name, phone, items, "New", photo))
     oid = cur.lastrowid
     emp = request.form.get("employee_id") or None
     ups = bundle_suggestions(db, items)
@@ -762,6 +808,145 @@ def group_close(gid):
     return redirect(url_for("growth"))
 
 
+# ---- Billing: customer bills + printable invoices ----
+@app.route("/billing")
+def billing():
+    db = get_db()
+    items = db.execute("SELECT * FROM inventory ORDER BY name").fetchall()
+    bills = db.execute("SELECT * FROM bills ORDER BY id DESC LIMIT 20").fetchall()
+    return render_template("billing.html", items=items, bills=bills)
+
+
+@app.route("/billing/create", methods=["POST"])
+def bill_create():
+    db = get_db()
+    name = request.form.get("customer_name", "").strip() or "Walk-in"
+    phone = request.form.get("phone", "").strip()
+    try: discount = float(request.form.get("discount") or 0)
+    except ValueError: discount = 0
+    lines = []
+    for it in db.execute("SELECT * FROM inventory").fetchall():
+        try: q = float(request.form.get(f"qty_{it['id']}") or 0)
+        except ValueError: q = 0
+        if q > 0:
+            q = min(q, it["stock_qty"] or 0)
+            if q <= 0: continue
+            price = it["price"] or 0
+            lines.append((it, q, price, round(q * price, 2)))
+    if not lines:
+        return redirect(url_for("billing"))
+    subtotal = round(sum(l[3] for l in lines), 2)
+    total = round(max(subtotal - discount, 0), 2)
+    photo = save_photo(request.files.get("photo"))
+    cur = db.execute("INSERT INTO bills (customer_name, phone, subtotal, discount, total, photo) VALUES (?,?,?,?,?,?)",
+                     (name, phone, subtotal, discount, total, photo))
+    bid = cur.lastrowid
+    for it, q, price, amt in lines:
+        db.execute("INSERT INTO bill_items (bill_id, item_name, qty, unit, price, amount) VALUES (?,?,?,?,?,?)",
+                   (bid, it["name"], q, it["unit"], price, amt))
+        db.execute("UPDATE inventory SET stock_qty = stock_qty - ? WHERE id=?", (q, it["id"]))
+    upsert_customer(db, name, phone)
+    db.commit()
+    run_stock_alerts(db)
+    return redirect(url_for("bill_view", bid=bid))
+
+
+@app.route("/bills/<int:bid>")
+def bill_view(bid):
+    db = get_db()
+    bill = db.execute("SELECT * FROM bills WHERE id=?", (bid,)).fetchone()
+    if not bill:
+        return redirect(url_for("billing"))
+    lines = db.execute("SELECT * FROM bill_items WHERE bill_id=?", (bid,)).fetchall()
+    return render_template("bill.html", bill=bill, lines=lines)
+
+
+@app.route("/bills/<int:bid>/delete", methods=["POST"])
+def bill_delete(bid):
+    db = get_db()
+    db.execute("DELETE FROM bill_items WHERE bill_id=?", (bid,))
+    db.execute("DELETE FROM bills WHERE id=?", (bid,))
+    db.commit()
+    return redirect(url_for("billing"))
+
+
+# ---- Wholesaler bills: purchase entries with auto rate calc ----
+@app.route("/wholesale")
+def wholesale():
+    db = get_db()
+    vendors = db.execute("SELECT * FROM vendors ORDER BY name").fetchall()
+    wbills = db.execute("SELECT w.*, v.name AS vendor_name FROM wholesaler_bills w LEFT JOIN vendors v ON w.vendor_id=v.id ORDER BY w.id DESC LIMIT 20").fetchall()
+    return render_template("wholesale.html", vendors=vendors, wbills=wbills)
+
+
+@app.route("/wholesale/create", methods=["POST"])
+def wholesale_create():
+    db = get_db()
+    vendor_id = request.form.get("vendor_id") or None
+    bill_no = request.form.get("bill_no", "").strip()
+    bill_date = request.form.get("bill_date", "") or today_str()
+    names = request.form.getlist("item_name")
+    qtys = request.form.getlist("qty")
+    units = request.form.getlist("unit")
+    rates = request.form.getlist("rate")
+    amounts = request.form.getlist("amount")
+    lines = []
+    for n, q, u, r, a in zip(names, qtys, units, rates, amounts):
+        n = (n or "").strip()
+        if not n: continue
+        try: q = float(q or 0)
+        except ValueError: q = 0
+        try: r = float(r or 0)
+        except ValueError: r = 0
+        try: a = float(a or 0)
+        except ValueError: a = 0
+        # auto-calculate whichever of rate/amount is missing
+        if r and not a: a = round(q * r, 2)
+        elif a and not r and q: r = round(a / q, 2)
+        elif q and r: a = round(q * r, 2)
+        lines.append({"name": n, "qty": q, "unit": u or "pcs", "rate": r, "amount": a})
+    if not lines:
+        return redirect(url_for("wholesale"))
+    subtotal = round(sum(l["amount"] for l in lines), 2)
+    photo = save_photo(request.files.get("photo"))
+    cur = db.execute("INSERT INTO wholesaler_bills (vendor_id, bill_no, bill_date, subtotal, total, photo) VALUES (?,?,?,?,?,?)",
+                     (vendor_id, bill_no, bill_date, subtotal, subtotal, photo))
+    wid = cur.lastrowid
+    for l in lines:
+        db.execute("INSERT INTO wholesaler_bill_items (bill_id, item_name, qty, unit, rate, amount) VALUES (?,?,?,?,?,?)",
+                   (wid, l["name"], l["qty"], l["unit"], l["rate"], l["amount"]))
+        # auto-update shop rates + stock from wholesaler bill
+        row = db.execute("SELECT * FROM inventory WHERE lower(name)=lower(?)", (l["name"],)).fetchone()
+        if row:
+            db.execute("UPDATE inventory SET stock_qty = stock_qty + ?, price = ? WHERE id=?",
+                       (l["qty"], l["rate"] if l["rate"] else row["price"], row["id"]))
+        elif l["qty"] or l["rate"]:
+            db.execute("INSERT INTO inventory (name, category, stock_qty, unit, low_threshold, price) VALUES (?,?,?,?,?,?)",
+                       (l["name"], "", l["qty"], l["unit"], 5, l["rate"]))
+    db.commit()
+    run_stock_alerts(db)
+    return redirect(url_for("wholesale_view", wid=wid))
+
+
+@app.route("/wholesale/<int:wid>")
+def wholesale_view(wid):
+    db = get_db()
+    w = db.execute("SELECT w.*, v.name AS vendor_name FROM wholesaler_bills w LEFT JOIN vendors v ON w.vendor_id=v.id WHERE w.id=?", (wid,)).fetchone()
+    if not w:
+        return redirect(url_for("wholesale"))
+    lines = db.execute("SELECT * FROM wholesaler_bill_items WHERE bill_id=?", (wid,)).fetchall()
+    return render_template("wholesale_bill.html", w=w, lines=lines)
+
+
+@app.route("/wholesale/<int:wid>/delete", methods=["POST"])
+def wholesale_delete(wid):
+    db = get_db()
+    db.execute("DELETE FROM wholesaler_bill_items WHERE bill_id=?", (wid,))
+    db.execute("DELETE FROM wholesaler_bills WHERE id=?", (wid,))
+    db.commit()
+    return redirect(url_for("wholesale"))
+
+
 @app.route("/api/tasks")
 def api_tasks():
     db = get_db()
@@ -799,9 +984,10 @@ def _ensure_db():
     n = db.execute(
         "SELECT COUNT(*) c FROM sqlite_master WHERE type='table' AND name IN "
         "('employees','tasks','customer_orders','inventory','vendors','purchase_orders',"
-        "'checklist_items','customers','promotions','flash_sales','group_buys','users')"
+        "'checklist_items','customers','promotions','flash_sales','group_buys','users',"
+        "'bills','bill_items','wholesaler_bills','wholesaler_bill_items')"
     ).fetchone()["c"]
-    if n < 12:
+    if n < 16:
         g.pop("db", None)
         try: db.close()
         except Exception: pass

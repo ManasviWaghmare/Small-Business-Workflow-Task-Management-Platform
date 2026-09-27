@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Bill #{{ bill['id'] }} - TaskFlow{% endblock %}
+{% block content %}
+<div class="panel invoice">
+<div class="invohead"><div><h1>TaskFlow Store</h1><p class="muted">Daily grocery • Bills & receipts</p></div>
+<div style="text-align:right"><b>Bill #{{ bill['id'] }}</b><br><span class="muted">{{ bill['created_at'] }}</span></div></div>
+<p><b>{{ bill['customer_name'] }}</b><br><span class="muted">{{ bill['phone'] }}</span></p>
+<table><tr><th>Item</th><th>Qty</th><th>Price</th><th>Amount</th></tr>
+{% for l in lines %}<tr><td>{{ l['item_name'] }}</td><td>{{ l['qty'] }} {{ l['unit'] }}</td><td>Rs {{ l['price'] }}</td><td>Rs {{ l['amount'] }}</td></tr>{% endfor %}</table>
+<p style="text-align:right">Subtotal: Rs {{ bill['subtotal'] }}<br>Discount: Rs {{ bill['discount'] }}<br><b>Total: Rs {{ bill['total'] }}</b></p>
+{% if bill['photo'] %}<p>Customer list:<br><img src="{{ url_for('static', filename=bill['photo']) }}" class="shot"></p>{% endif %}
+<div class="noprint row"><button class="btn primary" onclick="window.print()">Print / Save PDF</button>
+<a class="btn" href="/billing">Back</a></div>
+</div>
+{% endblock %}
