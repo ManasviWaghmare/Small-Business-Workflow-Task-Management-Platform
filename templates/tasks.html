@@ -1,60 +1,75 @@
 {% extends "base.html" %}
-{% block title %}Tasks - TaskFlow{% endblock %}
+{% block title %}My Tasks - TaskFlow{% endblock %}
 {% block content %}
-<h1>Tasks</h1>
+<h1>My Tasks</h1>
+<p class="muted">Stay focused and get things done.</p>
 
-<div class="panel">
-<h2>{% if edit_task %}Edit task #{{ edit_task['id'] }}{% else %}➕ New task{% endif %}</h2>
-<form method="post" action="{% if edit_task %}/tasks/{{ edit_task['id'] }}/update{% else %}/tasks/add{% endif %}" class="form">
-  <input name="title" placeholder="Task title *" required value="{{ edit_task['title'] if edit_task else '' }}">
-  <textarea name="description" placeholder="Description">{{ edit_task['description'] if edit_task else '' }}</textarea>
-  <div class="row">
-    <select name="employee_id"><option value="">Unassigned</option>
-      {% for e in employees %}<option value="{{ e['id'] }}" {% if edit_task and edit_task['employee_id']==e['id'] %}selected{% endif %}>{{ e['name'] }}</option>{% endfor %}
-    </select>
-    <select name="priority">{% for p in priorities %}<option {% if edit_task and edit_task['priority']==p %}selected{% endif %}>{{ p }}</option>{% endfor %}</select>
-    <select name="status">{% for s in statuses %}<option {% if edit_task and edit_task['status']==s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
-    <input type="date" name="deadline" value="{{ edit_task['deadline'] if edit_task else '' }}">
-  </div>
-  <div class="row"><button class="btn primary" type="submit">{% if edit_task %}Save changes{% else %}Create task{% endif %}</button>
-  {% if edit_task %}<a class="btn" href="/tasks">Cancel</a>{% endif %}</div>
-</form>
+<div class="chips">
+  <div class="card"><div class="dot g">≡</div><div><div class="num">{{ counts.total }}</div><div class="lbl">Total</div></div></div>
+  <div class="card"><div class="dot a">▢</div><div><div class="num">{{ counts.todo }}</div><div class="lbl">To Do</div></div></div>
+  <div class="card"><div class="dot b">◷</div><div><div class="num">{{ counts.prog }}</div><div class="lbl">In Progress</div></div></div>
+  <div class="card"><div class="dot g">✓</div><div><div class="num">{{ counts.done }}</div><div class="lbl">Done</div></div></div>
+  <div class="card"><div class="dot r">!</div><div><div class="num">{{ counts.overdue }}</div><div class="lbl">Overdue</div></div></div>
+</div>
+
+<div class="tabs">
+  <a href="/tasks" class="{{ 'on' if not f_status else '' }}">All tasks</a>
+  <a href="/tasks?status=Todo" class="{{ 'on' if f_status=='Todo' else '' }}">To Do</a>
+  <a href="/tasks?status=In+Progress" class="{{ 'on' if f_status=='In Progress' else '' }}">In Progress</a>
+  <a href="/tasks?status=Done" class="{{ 'on' if f_status=='Done' else '' }}">Done</a>
 </div>
 
 <div class="panel">
-<form method="get" action="/tasks" class="form row">
-  <input name="q" placeholder="Search..." value="{{ q }}">
-  <select name="status"><option value="">All status</option>{% for s in statuses %}<option value="{{ s }}" {% if f_status==s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
-  <select name="priority"><option value="">All priority</option>{% for p in priorities %}<option value="{{ p }}" {% if f_priority==p %}selected{% endif %}>{{ p }}</option>{% endfor %}</select>
-  <select name="employee"><option value="">All members</option>{% for e in employees %}<option value="{{ e['id'] }}" {% if f_emp==e['id']|string %}selected{% endif %}>{{ e['name'] }}</option>{% endfor %}</select>
-  <button class="btn" type="submit">Filter</button>
-  <a class="btn" href="/tasks">Clear</a>
-</form>
-</div>
-
-<div class="panel">
-<table>
-<tr><th>Task</th><th>Assignee</th><th>Priority</th><th>Status</th><th>Deadline</th><th>Actions</th></tr>
-{% for t in tasks %}
-<tr class="{% if is_overdue(t) %}overdue-row{% endif %}">
-  <td><b>{{ t['title'] }}</b><br><small>{{ t['description'] }}</small>{% if is_overdue(t) %}<br><span class="pill Overdue">OVERDUE</span>{% endif %}</td>
-  <td>{{ t['employee_name'] or '—' }}</td>
-  <td><span class="pill {{ t['priority'] }}">{{ t['priority'] }}</span></td>
-  <td>{{ t['status'] }}</td>
-  <td>{{ t['deadline'] or '—' }}</td>
-  <td class="actions">
-    {% if t['status'] != 'Done' %}
-    <form method="post" action="/tasks/{{ t['id'] }}/status"><input type="hidden" name="status" value="Done"><input type="hidden" name="next" value="/tasks"><button class="btn small ok-btn" title="Mark done">✓</button></form>
+  <table>
+    <tr><th>Task</th><th>Assignee</th><th>Priority</th><th>Due</th><th>Status</th><th></th></tr>
+    {% for t in tasks %}
+    <tr class="{% if is_overdue(t) %}overdue-row{% endif %}">
+      <td><div class="tcell"><span class="ava">{{ (t['employee_name'] or 'U')[0] }}</span><span><span class="ttitle">{{ t['title'] }}</span>{% if t['description'] %}<br><span class="tsub">{{ t['description'][:60] }}</span>{% endif %}{% if is_overdue(t) %}<br><span class="pill Overdue">Overdue</span>{% endif %}</span></div></td>
+      <td>{{ t['employee_name'] or '—' }}</td>
+      <td><span class="pill {{ t['priority'] }}">{{ t['priority'] }}</span></td>
+      <td>{{ t['deadline'] or '—' }}</td>
+      <td><span class="pill {{ t['status'] }}">{{ t['status'] }}</span></td>
+      <td><div class="actions">
+        {% if t['status'] != 'Done' %}
+        <form method="post" action="/tasks/{{ t['id'] }}/status"><input type="hidden" name="status" value="Done"><input type="hidden" name="next" value="/tasks"><button class="btn small ok-btn" title="Mark done">✓</button></form>
+        {% else %}
+        <form method="post" action="/tasks/{{ t['id'] }}/status"><input type="hidden" name="status" value="Todo"><input type="hidden" name="next" value="/tasks"><button class="btn small" title="Reopen">↩</button></form>
+        {% endif %}
+        <a class="btn small" href="/tasks?edit={{ t['id'] }}#newtask">Edit</a>
+        <form method="post" action="/tasks/{{ t['id'] }}/delete" onsubmit="return confirm('Delete?')"><button class="btn small danger-btn">✕</button></form>
+      </div></td>
+    </tr>
     {% else %}
-    <form method="post" action="/tasks/{{ t['id'] }}/status"><input type="hidden" name="status" value="Todo"><input type="hidden" name="next" value="/tasks"><button class="btn small" title="Reopen">↩</button></form>
-    {% endif %}
-    <a class="btn small" href="/tasks?edit={{ t['id'] }}">Edit</a>
-    <form method="post" action="/tasks/{{ t['id'] }}/delete" onsubmit="return confirm('Delete?')"><button class="btn small danger-btn">✕</button></form>
-  </td>
-</tr>
-{% else %}
-<tr><td colspan="6" class="muted">No tasks found. Create one above.</td></tr>
-{% endfor %}
-</table>
+    <tr><td colspan="6" class="muted">No tasks found. Create one below.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="panel">
+  <form method="get" action="/tasks" class="form row">
+    <input name="q" placeholder="Search..." value="{{ q }}">
+    <select name="priority"><option value="">All priorities</option>{% for p in priorities %}<option value="{{ p }}" {% if f_priority==p %}selected{% endif %}>{{ p }}</option>{% endfor %}</select>
+    <select name="employee"><option value="">Everyone</option>{% for e in employees %}<option value="{{ e['id'] }}" {% if f_emp==e['id']|string %}selected{% endif %}>{{ e['name'] }}</option>{% endfor %}</select>
+    <button class="btn" type="submit">Filter</button>
+    <a class="btn" href="/tasks">Clear</a>
+  </form>
+</div>
+
+<div class="panel" id="newtask">
+  <h2>{% if edit_task %}Edit task #{{ edit_task['id'] }}{% else %}+ New task{% endif %}</h2>
+  <form method="post" action="{% if edit_task %}/tasks/{{ edit_task['id'] }}/update{% else %}/tasks/add{% endif %}" class="form">
+    <input name="title" placeholder="Task title *" required value="{{ edit_task['title'] if edit_task else '' }}">
+    <textarea name="description" placeholder="Description">{{ edit_task['description'] if edit_task else '' }}</textarea>
+    <div class="row">
+      <select name="employee_id"><option value="">Unassigned</option>
+        {% for e in employees %}<option value="{{ e['id'] }}" {% if edit_task and edit_task['employee_id']==e['id'] %}selected{% endif %}>{{ e['name'] }}</option>{% endfor %}
+      </select>
+      <select name="priority">{% for p in priorities %}<option {% if edit_task and edit_task['priority']==p %}selected{% endif %}>{{ p }}</option>{% endfor %}</select>
+      <select name="status">{% for s in statuses %}<option {% if edit_task and edit_task['status']==s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+      <input type="date" name="deadline" value="{{ edit_task['deadline'] if edit_task else '' }}">
+    </div>
+    <div class="row"><button class="btn primary" type="submit">{% if edit_task %}Save changes{% else %}Create task{% endif %}</button>
+    {% if edit_task %}<a class="btn" href="/tasks">Cancel</a>{% endif %}</div>
+  </form>
 </div>
 {% endblock %}

@@ -1,59 +1,85 @@
 {% extends "base.html" %}
 {% block title %}Dashboard - TaskFlow{% endblock %}
 {% block content %}
-<h1>Dashboard</h1>
-<p class="muted">Today: {{ today }} • {{ pending }} pending, {{ overdue|length }} overdue • {{ new_orders }} open orders</p>
+<div class="hero">
+  <h1><span id="greet">Hello</span>, Shopkeeper</h1>
+  <p>{{ today }} • {{ pending }} tasks pending, {{ overdue|length }} overdue, {{ new_orders }} orders open.</p>
+  <div class="quick">
+    <a class="btn primary" href="/tasks#newtask">+ New task</a>
+    <a class="btn" href="/orders">New order</a>
+    <a class="btn" href="/checklists">Daily list ({{ cl_done }}/{{ cl_total }})</a>
+  </div>
+</div>
 
 <div class="cards">
-  <div class="card"><div class="num">{{ total }}</div><div class="lbl">Total tasks</div></div>
-  <div class="card warn"><div class="num">{{ pending }}</div><div class="lbl">Pending</div></div>
-  <div class="card danger"><div class="num">{{ overdue|length }}</div><div class="lbl">Overdue</div></div>
-  <div class="card ok"><div class="num">{{ done }}</div><div class="lbl">Done ({{ completion }}%)</div></div>
+  <div class="card"><div class="dot g">≡</div><div><div class="num">{{ total }}</div><div class="lbl">Total tasks</div><div class="sub">{{ done }} completed</div></div></div>
+  <div class="card"><div class="dot b">◷</div><div><div class="num">{{ by_status.get('In Progress', 0) }}</div><div class="lbl">In Progress</div><div class="sub">{{ completion }}% done overall</div></div></div>
+  <div class="card"><div class="dot a">▢</div><div><div class="num">{{ by_status.get('Todo', 0) }}</div><div class="lbl">To Do</div><div class="sub">{{ due_today|length }} due today</div></div></div>
+  <div class="card"><div class="dot r">!</div><div><div class="num">{{ overdue|length }}</div><div class="lbl">Overdue</div><div class="sub">Needs attention</div></div></div>
 </div>
 
-<div class="panel">
-  <h2>Needs attention</h2>
-  {% if overdue %}
-  <table><tr><th>Task</th><th>Who</th><th>Due</th><th></th></tr>
-  {% for t in overdue %}
-  <tr class="overdue-row"><td>{{ t['title'] }}</td><td>{{ t['employee_name'] or 'Nobody' }}</td><td>{{ t['deadline'] }}</td>
-  <td><form method="post" action="/tasks/{{ t['id'] }}/status"><input type="hidden" name="status" value="Done"><input type="hidden" name="next" value="/"><button class="btn small">Done</button></form></td></tr>
-  {% endfor %}</table>
-  {% else %}<p class="muted">Nothing overdue.</p>{% endif %}
-  <h2>Due today</h2>
-  {% if due_today %}<ul class="list">{% for t in due_today %}<li>{{ t['title'] }} — {{ t['employee_name'] or 'Nobody' }} <span class="pill {{ t['priority'] }}">{{ t['priority'] }}</span></li>{% endfor %}</ul>
-  {% else %}<p class="muted">Nothing due today.</p>{% endif %}
-</div>
-
-<div class="grid2">
-<div class="panel">
-  <h2>Shop</h2>
-  <p><b>Low stock ({{ low_stock|length }})</b>{% if low_stock %}: {% for i in low_stock %}{{ i['name'] }} ({{ i['stock_qty'] }} left){% if not loop.last %}, {% endif %}{% endfor %} <a href="/inventory">Stock →</a>{% else %} — all OK.{% endif %}</p>
-  <p><b>Expiring soon</b>{% if expiring %}: {% for i in expiring %}{{ i['name'] }} ({{ i['expiry_date'] or 'no date' }}){% if not loop.last %}, {% endif %}{% endfor %}{% else %} — nothing flagged.{% endif %}</p>
-  <p><b>Orders:</b> {{ new_orders }} open <a href="/orders">Orders →</a> • <b>Suppliers:</b> {{ open_pos }} open POs <a href="/procurement">Vendors →</a> • <b>Daily list:</b> {{ cl_done }}/{{ cl_total }} <a href="/checklists">Daily →</a></p>
-  <h2>Restock ideas <span class="muted">(from recent orders)</span></h2>
-  {% if forecast.top_items %}<ul class="list">{% for item,n in forecast.top_items %}<li>{{ item }} — ordered {{ n }} times</li>{% endfor %}</ul>
-  {% else %}<p class="muted">Order more to see ideas here.</p>{% endif %}
-</div>
-<div class="panel">
-  <h2>Team</h2>
-  <table><tr><th>Name</th><th>Pending</th><th>Overdue</th><th>Done</th></tr>
-  {% for e in per_employee %}
-  <tr><td>{{ e.name }}<br><small class="muted">{{ e.role }}</small></td><td>{{ e.pending }}</td><td>{{ e.overdue }}</td><td>{{ e.done }}</td></tr>
-  {% endfor %}</table>
-  <p><a class="btn small" href="/employees">Team →</a> <a class="btn small" href="/customers">Customers →</a></p>
-  <h2>Sales</h2>
-  {% if flash %}<p><b>Sale on now:</b> {% for f in flash %}{{ f['item'] }} ({{ f['discount'] }}){% if not loop.last %}, {% endif %}{% endfor %} <a href="/growth">Details →</a></p>
-  {% else %}<p class="muted">No sale running. <a href="/growth">Growth →</a></p>{% endif %}
-  {% if reten %}<p><b>{{ reten|length }} customers</b> haven't ordered in 15+ days — reminder tasks made automatically.</p>{% endif %}
-  {% if groups %}<p><b>Group deals open:</b> {% for gb in groups %}{{ gb['title'] }}{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
-  <p class="muted">Khata pending: Rs {{ khata_total }}</p>
-</div>
-</div>
-
-<div class="panel">
-  <h2>Latest tasks</h2>
-  <ul class="list">{% for t in recent %}<li>{{ t['title'] }} — {{ t['status'] }} ({{ t['employee_name'] or 'Nobody' }})</li>{% endfor %}</ul>
-  <p><a class="btn" href="/tasks">All tasks →</a></p>
+<div class="cols">
+  <div>
+    <div class="panel">
+      <div class="rowhead"><h2>Tasks</h2><a class="btn small" href="/tasks">View all</a></div>
+      <table>
+        <tr><th>Task</th><th>Priority</th><th>Due</th><th>Status</th></tr>
+        {% for t in recent %}
+        <tr class="{% if t['deadline'] and t['deadline'] < today and t['status'] != 'Done' %}overdue-row{% endif %}">
+          <td><div class="tcell"><span class="ava">{{ (t['employee_name'] or 'U')[0] }}</span><span><span class="ttitle">{{ t['title'] }}</span><br><span class="tsub">{{ t['employee_name'] or 'Unassigned' }}</span></span></div></td>
+          <td><span class="pill {{ t['priority'] }}">{{ t['priority'] }}</span></td>
+          <td>{{ t['deadline'] or '—' }}</td>
+          <td><span class="pill {{ t['status'] }}">{{ t['status'] }}</span></td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <h2>Shop</h2>
+        <p><b>Low stock ({{ low_stock|length }})</b><span class="muted"> — <a href="/inventory">Stock →</a></span><br>
+        <span class="muted">{% for i in low_stock %}{{ i['name'] }} ({{ i['stock_qty'] }} left){% if not loop.last %}, {% endif %}{% else %}All OK.{% endfor %}</span></p>
+        <p><b>Expiring</b><br><span class="muted">{% for i in expiring %}{{ i['name'] }} ({{ i['expiry_date'] or 'no date' }}){% if not loop.last %}, {% endif %}{% else %}Nothing flagged.{% endfor %}</span></p>
+        <p><b>{{ open_pos }} open POs</b> <a href="/procurement">Vendors →</a></p>
+      </div>
+      <div class="panel">
+        <h2>Sales</h2>
+        {% if flash %}<p><b>Sale on:</b> {% for f in flash %}{{ f['item'] }} ({{ f['discount'] }}){% if not loop.last %}, {% endif %}{% endfor %}</p>
+        {% else %}<p class="muted">No sale running.</p>{% endif %}
+        {% if reten %}<p><b>{{ reten|length }}</b> quiet customers (15+ days).</p>{% endif %}
+        {% if groups %}<p><b>Deals:</b> {% for gb in groups %}{{ gb['title'] }}{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+        <p class="muted">Khata pending: Rs {{ khata_total }} • <a href="/growth">Growth →</a></p>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="panel">
+      <h2>Overall progress</h2>
+      <div class="donutwrap">
+        <svg viewBox="0 0 120 120" class="donut">
+          <circle cx="60" cy="60" r="52" class="track"></circle>
+          <circle cx="60" cy="60" r="52" class="fill" style="stroke-dasharray:{{ (completion/100*326.7)|round(1) }} 326.7"></circle>
+        </svg>
+        <ul class="list donutkey">
+          <li><b>{{ completion }}%</b> done</li>
+          {% for s,c in by_status.items() %}<li>{{ s }}: {{ c }}</li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="rowhead"><h2>Upcoming deadlines</h2><a class="btn small" href="/tasks">View all</a></div>
+      <ul class="list">
+        {% for t in upcoming %}<li><b>{{ t['title'] }}</b><br><span class="muted">{{ t['deadline'] or 'No date' }} • {{ t['employee_name'] or 'Unassigned' }}</span> <span class="pill {{ t['priority'] }}">{{ t['priority'] }}</span></li>
+        {% else %}<li class="muted">Nothing upcoming.</li>{% endfor %}
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="rowhead"><h2>Team workload</h2><a class="btn small" href="/employees">Team</a></div>
+      {% for e in per_employee %}
+      <div class="wload"><div class="tcell"><span class="ava">{{ e.name[0] }}</span><span><span class="ttitle">{{ e.name }}</span><br><span class="tsub">{{ e.pending }} pending{% if e.overdue %}, {{ e.overdue }} overdue{% endif %}</span></span></div>
+      <div class="pbar"><span style="width:{{ e.rate }}%"></span></div></div>
+      {% endfor %}
+    </div>
+  </div>
 </div>
 {% endblock %}

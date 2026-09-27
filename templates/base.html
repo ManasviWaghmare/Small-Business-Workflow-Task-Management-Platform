@@ -3,40 +3,44 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}Workflow Manager{% endblock %}</title>
+<title>{% block title %}TaskFlow{% endblock %}</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-<nav class="topnav">
-  <a class="brand" href="/">TaskFlow <span>for small shops & grocery stores</span></a>
-  <div class="links">
-    <a href="/" class="{{ 'active' if request.path=='/' else '' }}">Dashboard</a>
-    <a href="/tasks" class="{{ 'active' if request.path.startswith('/tasks') else '' }}">Tasks</a>
-    <a href="/inventory" class="{{ 'active' if request.path.startswith('/inventory') else '' }}">Stock</a>
-    <a href="/procurement" class="{{ 'active' if request.path.startswith('/procurement') else '' }}">Vendors</a>
-    <a href="/orders" class="{{ 'active' if request.path.startswith('/orders') else '' }}">Orders</a>
-    <a href="/growth" class="{{ 'active' if request.path.startswith('/growth') else '' }}">Growth</a>
-    <a href="/customers" class="{{ 'active' if request.path.startswith('/customers') else '' }}">Customers</a>
-    <a href="/checklists" class="{{ 'active' if request.path.startswith('/checklists') else '' }}">Daily</a>
-    <a href="/employees" class="{{ 'active' if request.path.startswith('/employees') else '' }}">Team</a>
+<div class="shell">
+  <aside class="sidebar">
+    <a class="logo" href="/">TaskFlow</a>
+    <p class="side-sub">Small shop manager</p>
+    <nav class="snav">
+      <a href="/" class="{{ 'on' if request.path=='/' else '' }}">Dashboard</a>
+      <a href="/tasks" class="{{ 'on' if request.path.startswith('/tasks') else '' }}">My Tasks</a>
+      <a href="/orders" class="{{ 'on' if request.path.startswith('/orders') else '' }}">Orders</a>
+      <a href="/inventory" class="{{ 'on' if request.path.startswith('/inventory') else '' }}">Stock</a>
+      <a href="/procurement" class="{{ 'on' if request.path.startswith('/procurement') else '' }}">Vendors</a>
+      <a href="/checklists" class="{{ 'on' if request.path.startswith('/checklists') else '' }}">Daily List</a>
+      <a href="/growth" class="{{ 'on' if request.path.startswith('/growth') else '' }}">Growth</a>
+      <a href="/customers" class="{{ 'on' if request.path.startswith('/customers') else '' }}">Customers</a>
+      <a href="/employees" class="{{ 'on' if request.path.startswith('/employees') else '' }}">Team</a>
+    </nav>
+    <div class="side-foot">TaskFlow • FITFEST 2026</div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <form class="search" method="get" action="/tasks"><input name="q" placeholder="Search tasks..." value="{{ q if q is defined else '' }}"></form>
+      <span class="topdate">{{ today if today is defined else '' }}</span>
+    </header>
+    <div id="offline-bar" hidden>Offline — your entries will save when you reconnect.</div>
+    <main class="content">{% block content %}{% endblock %}</main>
   </div>
-</nav>
-<div id="offline-bar" hidden>📴 Offline — forms are saved locally and will sync when reconnected.</div>
-<main class="container">
-{% block content %}{% endblock %}
-</main>
-<footer><p>TaskFlow • FITFEST 2026 • Simple task manager for small businesses</p></footer>
+</div>
 <script>
-// Offline-first: indicator + draft persistence for textareas/inputs
-function updateOnline(){ document.getElementById('offline-bar').hidden = navigator.onLine; }
-window.addEventListener('online', updateOnline); window.addEventListener('offline', updateOnline); updateOnline();
-document.querySelectorAll('form.form textarea, form.form input[name=title]').forEach(el=>{
-  const k = 'draft:' + location.pathname + ':' + (el.name||'field');
-  el.value = el.value || localStorage.getItem(k) || '';
-  el.addEventListener('input', ()=>{ try{ localStorage.setItem(k, el.value);}catch(e){} });
-  el.closest('form').addEventListener('submit', ()=>{ try{ localStorage.removeItem(k);}catch(e){} });
-});
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/static/sw.js').catch(()=>{}); }
+(function(){
+  var bar = document.getElementById('offline-bar');
+  function upd(){ bar.hidden = navigator.onLine; }
+  window.addEventListener('online', upd); window.addEventListener('offline', upd); upd();
+  var g = document.getElementById('greet');
+  if (g) { var h = new Date().getHours(); g.textContent = h < 12 ? 'Good morning' : (h < 17 ? 'Good afternoon' : 'Good evening'); }
+})();
 </script>
 </body>
 </html>
