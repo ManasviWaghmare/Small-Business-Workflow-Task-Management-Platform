@@ -22,7 +22,7 @@
       <a href="/customers" class="{{ 'on' if request.path.startswith('/customers') else '' }}">Customers</a>
       <a href="/employees" class="{{ 'on' if request.path.startswith('/employees') else '' }}">Team</a>
     </nav>
-    <div class="side-foot">TaskFlow • FITFEST 2026</div>
+    <div class="side-foot">{{ session.get('user', '') }} • <a href="/logout">Logout</a><br>TaskFlow • FITFEST 2026</div>
   </aside>
   <div class="main">
     <header class="topbar">

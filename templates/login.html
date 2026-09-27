@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Login - TaskFlow</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="loginwrap">
+  <div class="logincard">
+    <h1>TaskFlow</h1>
+    <p class="muted">Small shop manager — please log in.</p>
+    {% if err %}<p class="err">{{ err }}</p>{% endif %}
+    <form method="post" class="form">
+      <input name="username" placeholder="Username" required autofocus>
+      <input name="password" type="password" placeholder="Password" required>
+      <button class="btn primary" type="submit" style="width:100%">Log in</button>
+    </form>
+    <p class="muted">Demo: <b>admin</b> / <b>admin123</b></p>
+  </div>
+</div>
+</body>
+</html>
