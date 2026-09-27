@@ -636,8 +636,10 @@ def order_add():
     name = request.form.get("customer_name", "").strip() or (parsed["customer_name"] if parsed else "Walk-in")
     phone = request.form.get("phone", "").strip() or (parsed["phone"] if parsed else "")
     if parsed: items = parsed["items_text"]
-    if not items and not request.files.get("photo"): return redirect(url_for("orders"))
-    photo = save_photo(request.files.get("photo"))
+    photo_file = request.files.get("photo")
+    has_photo = bool(photo_file and photo_file.filename)
+    if not items and not has_photo: return redirect(url_for("orders"))
+    photo = save_photo(photo_file)
     cur = db.execute("INSERT INTO customer_orders (customer_name, phone, items_text, status, photo) VALUES (?,?,?,?,?)", (name, phone, items, "New", photo))
     oid = cur.lastrowid
     emp = request.form.get("employee_id") or None
@@ -802,8 +804,6 @@ def group_join(gid):
     name = request.form.get("customer_name", "").strip() or "Neighbour"
     qty = request.form.get("qty", "1")
     db.execute("INSERT INTO group_members (group_id, customer_name, qty) VALUES (?,?,?)", (gid, name, qty))
-    try: db.execute("UPDATE group_buys SET joined_qty = joined_qty + ?", (float(qty.split()[0]),)); 
-    except Exception: pass
     db.execute("UPDATE group_buys SET joined_qty = (SELECT COUNT(*) FROM group_members WHERE group_id=?) WHERE id=?", (gid, gid))
     db.commit()
     return redirect(url_for("growth"))
