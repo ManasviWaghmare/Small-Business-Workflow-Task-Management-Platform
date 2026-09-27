@@ -110,6 +110,14 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS bills (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, customer_name TEXT DEFAULT 'Walk-in',
+            phone TEXT DEFAULT '', subtotal REAL DEFAULT 0, discount REAL DEFAULT 0,
+            total REAL DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP);
+        CREATE TABLE IF NOT EXISTS bill_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, bill_id INTEGER REFERENCES bills(id) ON DELETE CASCADE,
+            item_name TEXT NOT NULL, qty REAL DEFAULT 1, unit TEXT DEFAULT 'pcs',
+            price REAL DEFAULT 0, amount REAL DEFAULT 0);
         """
     )
     db.commit()

@@ -69,8 +69,16 @@ Dockerfile
 
 ## Demo login
 Username `admin`, password `admin123` (seeded on first run).
-Change the session key in production:
 ```bash
-# Cloud Run
+# Cloud Run with a private session key
 gcloud run deploy taskflow --source . --region asia-south1 --allow-unauthenticated --set-env-vars SECRET_KEY=$(openssl rand -hex 32)
 ```
+
+## Install on Android (no Play Store needed)
+TaskFlow is an installable web app (PWA) with offline support for the shop floor:
+1. Open the Cloud Run link in **Chrome on your Android phone** and log in.
+2. Tap **⋮ menu → Add to Home screen** (or **Install app** if shown).
+3. Open **TaskFlow** from the home screen — it runs full-screen like a native app.
+
+Why this works for the shop: the service worker caches pages and styles, so
+checklists and tasks keep opening in backrooms with poor network.

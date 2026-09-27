@@ -110,4 +110,11 @@ h1{font-size:1.4rem;margin:14px 0 2px}
   .side-foot{display:none}
   .content{padding:4px 12px 30px}
   .topbar{padding:10px 12px}
+  .topdate{display:none}
+  .panel{overflow-x:auto}
+  .cards{grid-template-columns:1fr 1fr}
+  .hero{padding:16px}
+  .hero h1{font-size:1.25rem}
+  .btn{min-height:42px}
+  .form input,.form select,.form textarea{font-size:16px}
 }
