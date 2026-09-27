@@ -8,7 +8,7 @@
 <table><tr><th>Item</th><th>Qty</th><th>Price</th><th>Amount</th></tr>
 {% for l in lines %}<tr><td>{{ l['item_name'] }}</td><td>{{ l['qty'] }} {{ l['unit'] }}</td><td>Rs {{ l['price'] }}</td><td>Rs {{ l['amount'] }}</td></tr>{% endfor %}</table>
 <p style="text-align:right">Subtotal: Rs {{ bill['subtotal'] }}<br>Discount: Rs {{ bill['discount'] }}<br><b>Total: Rs {{ bill['total'] }}</b></p>
-{% if bill['photo'] %}<p>Customer list:<br><img src="{{ url_for('static', filename=bill['photo']) }}" class="shot"></p>{% endif %}
+{% if bill['photo'] %}<p>Customer list:<br><img src="{{ url_for('uploaded', name=bill['photo']) }}" class="shot"></p>{% endif %}
 <div class="noprint row"><button class="btn primary" onclick="window.print()">Print / Save PDF</button>
 <a class="btn" href="/billing">Back</a></div>
 </div>

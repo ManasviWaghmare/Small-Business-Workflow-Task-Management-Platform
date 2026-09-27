@@ -15,7 +15,7 @@
 {% for o in orders %}
 <tr><td><b>#{{ o['id'] }} {{ o['customer_name'] }}</b><br><small>{{ o['phone'] }} • {{ o['created_at'] }}</small></td>
 <td><small>{{ o['items_text'].replace('\n','<br>')|safe }}</small>
-{% if o['photo'] %}<br><a href="{{ url_for('static', filename=o['photo']) }}"><img src="{{ url_for('static', filename=o['photo']) }}" class="shot"></a>{% endif %}
+{% if o['photo'] %}<br><a href="{{ url_for('uploaded', name=o['photo']) }}"><img src="{{ url_for('uploaded', name=o['photo']) }}" class="shot"></a>{% endif %}
 {% if bundles.get(o['id']) %}<br>{% for b in bundles[o['id']] %}<span class="pill High">Upsell: {{ b['suggest'] }} ({{ b['offer'] }})</span>{% endfor %}{% endif %}</td>
 <td><span class="pill">{{ o['status'] }}</span></td>
 <td class="actions">{% if o['status'] != 'Delivered' %}<form method="post" action="/orders/{{ o['id'] }}/advance"><button class="btn small">Next →</button></form>{% else %}✓{% endif %}

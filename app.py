@@ -5,12 +5,15 @@ import re
 import sqlite3
 from collections import Counter
 from datetime import date, datetime, timedelta
-from flask import Flask, g, redirect, render_template, request, url_for, jsonify, session
+from flask import Flask, g, redirect, render_template, request, url_for, jsonify, session, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-if os.getenv("K_SERVICE") or os.getenv("PORT"):
+ON_VERCEL = bool(os.getenv("VERCEL"))
+if ON_VERCEL:
+    DATABASE = os.getenv("DATABASE_PATH", "/tmp/workflow.db")
+elif os.getenv("K_SERVICE") or os.getenv("PORT"):
     DATABASE = os.getenv("DATABASE_PATH", "/tmp/workflow.db")
 else:
     DATABASE = os.getenv("DATABASE_PATH", os.path.join(BASE_DIR, "workflow.db"))
@@ -39,21 +42,24 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "dev-key-change-me")
 app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024
 
-UPLOAD_DIR = os.path.join(BASE_DIR, "static", "uploads")
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", os.path.join(BASE_DIR, "static", "uploads"))
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 ALLOWED_EXT = {"png", "jpg", "jpeg", "webp"}
 
 
 def save_photo(f):
-    """Save an uploaded list/bill photo, return its static path (or '')."""
+    """Save an uploaded list/bill photo, return its filename (or '')."""
     if not f or not getattr(f, "filename", ""):
         return ""
     ext = f.filename.rsplit(".", 1)[-1].lower() if "." in f.filename else ""
     if ext not in ALLOWED_EXT:
         return ""
     name = datetime.now().strftime("%Y%m%d%H%M%S%f") + "_" + secure_filename(f.filename)[-30:]
-    f.save(os.path.join(UPLOAD_DIR, name))
-    return "uploads/" + name
+    try:
+        f.save(os.path.join(UPLOAD_DIR, name))
+    except OSError:
+        return ""
+    return name
 
 PUBLIC_PATHS = ("/login", "/healthz")
 
@@ -354,6 +360,11 @@ def run_retention_tasks(db, days=15):
 
 @app.route("/healthz")
 def healthz(): return "ok", 200
+
+
+@app.route("/uploads/<path:name>")
+def uploaded(name):
+    return send_from_directory(UPLOAD_DIR, name)
 
 
 @app.route("/")

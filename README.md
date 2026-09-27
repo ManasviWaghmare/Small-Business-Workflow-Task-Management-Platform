@@ -60,11 +60,12 @@ docker build -t taskflow .
 docker run -p 8080:8080 -e PORT=8080 taskflow
 ```
 
-## Deploy to Cloud Run
-```bash
-gcloud run deploy taskflow --source . --region asia-south1 --allow-unauthenticated
-```
-App listens on `$PORT` and serves `/healthz` for health checks.
+## Deploy to Vercel (one platform for everything)
+Push this repo, then on `vercel.com` → Add New Project → import it.
+No build settings needed (`vercel.json` routes everything to the Flask app).
+Add env var `SECRET_KEY` (any random string) in project settings.
+Note: the free serverless tier resets the demo database between cold starts —
+the app reseeds itself, so the jury always lands on working demo data.
 
 ## Project structure
 ```
