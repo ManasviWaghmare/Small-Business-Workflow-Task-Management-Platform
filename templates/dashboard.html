@@ -2,67 +2,58 @@
 {% block title %}Dashboard - TaskFlow{% endblock %}
 {% block content %}
 <h1>Dashboard</h1>
-<p class="muted">Today: {{ today }} • General workflow platform, validated on a micro-grocery store. Pending orders: <b>{{ new_orders }}</b> • Open POs: <b>{{ open_pos }}</b> • Daily checklist: <b>{{ cl_done }}/{{ cl_total }}</b></p>
+<p class="muted">Today: {{ today }} • {{ pending }} pending, {{ overdue|length }} overdue • {{ new_orders }} open orders</p>
 
 <div class="cards">
   <div class="card"><div class="num">{{ total }}</div><div class="lbl">Total tasks</div></div>
   <div class="card warn"><div class="num">{{ pending }}</div><div class="lbl">Pending</div></div>
   <div class="card danger"><div class="num">{{ overdue|length }}</div><div class="lbl">Overdue</div></div>
-  <div class="card ok"><div class="num">{{ done }}</div><div class="lbl">Completed</div></div>
-  <div class="card"><div class="num">{{ completion }}%</div><div class="lbl">Completion rate</div>
-    <div class="bar"><div style="width:{{ completion }}%"></div></div>
-  </div>
+  <div class="card ok"><div class="num">{{ done }}</div><div class="lbl">Done ({{ completion }}%)</div></div>
+</div>
+
+<div class="panel">
+  <h2>Needs attention</h2>
+  {% if overdue %}
+  <table><tr><th>Task</th><th>Who</th><th>Due</th><th></th></tr>
+  {% for t in overdue %}
+  <tr class="overdue-row"><td>{{ t['title'] }}</td><td>{{ t['employee_name'] or 'Nobody' }}</td><td>{{ t['deadline'] }}</td>
+  <td><form method="post" action="/tasks/{{ t['id'] }}/status"><input type="hidden" name="status" value="Done"><input type="hidden" name="next" value="/"><button class="btn small">Done</button></form></td></tr>
+  {% endfor %}</table>
+  {% else %}<p class="muted">Nothing overdue.</p>{% endif %}
+  <h2>Due today</h2>
+  {% if due_today %}<ul class="list">{% for t in due_today %}<li>{{ t['title'] }} — {{ t['employee_name'] or 'Nobody' }} <span class="pill {{ t['priority'] }}">{{ t['priority'] }}</span></li>{% endfor %}</ul>
+  {% else %}<p class="muted">Nothing due today.</p>{% endif %}
 </div>
 
 <div class="grid2">
 <div class="panel">
-  <h2>⚠️ Overdue ({{ overdue|length }})</h2>
-  {% if overdue %}
-  <table><tr><th>Task</th><th>Assignee</th><th>Due</th><th></th></tr>
-  {% for t in overdue %}
-  <tr class="overdue-row"><td>{{ t['title'] }}</td><td>{{ t['employee_name'] or 'Unassigned' }}</td><td>{{ t['deadline'] }}</td>
-  <td><form method="post" action="/tasks/{{ t['id'] }}/status"><input type="hidden" name="status" value="Done"><input type="hidden" name="next" value="/"><button class="btn small">Mark done</button></form></td></tr>
+  <h2>Shop</h2>
+  <p><b>Low stock ({{ low_stock|length }})</b>{% if low_stock %}: {% for i in low_stock %}{{ i['name'] }} ({{ i['stock_qty'] }} left){% if not loop.last %}, {% endif %}{% endfor %} <a href="/inventory">Stock →</a>{% else %} — all OK.{% endif %}</p>
+  <p><b>Expiring soon</b>{% if expiring %}: {% for i in expiring %}{{ i['name'] }} ({{ i['expiry_date'] or 'no date' }}){% if not loop.last %}, {% endif %}{% endfor %}{% else %} — nothing flagged.{% endif %}</p>
+  <p><b>Orders:</b> {{ new_orders }} open <a href="/orders">Orders →</a> • <b>Suppliers:</b> {{ open_pos }} open POs <a href="/procurement">Vendors →</a> • <b>Daily list:</b> {{ cl_done }}/{{ cl_total }} <a href="/checklists">Daily →</a></p>
+  <h2>Restock ideas <span class="muted">(from recent orders)</span></h2>
+  {% if forecast.top_items %}<ul class="list">{% for item,n in forecast.top_items %}<li>{{ item }} — ordered {{ n }} times</li>{% endfor %}</ul>
+  {% else %}<p class="muted">Order more to see ideas here.</p>{% endif %}
+</div>
+<div class="panel">
+  <h2>Team</h2>
+  <table><tr><th>Name</th><th>Pending</th><th>Overdue</th><th>Done</th></tr>
+  {% for e in per_employee %}
+  <tr><td>{{ e.name }}<br><small class="muted">{{ e.role }}</small></td><td>{{ e.pending }}</td><td>{{ e.overdue }}</td><td>{{ e.done }}</td></tr>
   {% endfor %}</table>
-  {% else %}<p class="muted">No overdue tasks. Good job!</p>{% endif %}
-
-  <h2>📅 Due today ({{ due_today|length }})</h2>
-  {% if due_today %}<ul class="list">{% for t in due_today %}<li><b>{{ t['title'] }}</b> — {{ t['employee_name'] or 'Unassigned' }} <span class="pill {{ t['priority'] }}">{{ t['priority'] }}</span></li>{% endfor %}</ul>
-  {% else %}<p class="muted">Nothing due today.</p>{% endif %}
-
-  <h2>🥛 Low stock alerts ({{ low_stock|length }})</h2>
-  {% if low_stock %}<ul class="list">{% for i in low_stock %}<li><b>{{ i['name'] }}</b> — {{ i['stock_qty'] }} {{ i['unit'] }} left <a href="/inventory">manage →</a></li>{% endfor %}</ul>
-  {% else %}<p class="muted">Stock levels OK.</p>{% endif %}
-
-  <h2>⏳ Expiry watch</h2>
-  {% if expiring %}<ul class="list">{% for i in expiring %}<li><b>{{ i['name'] }}</b> — expires {{ i['expiry_date'] or 'n/a' }}</li>{% endfor %}</ul>
-  {% else %}<p class="muted">No perishables tracked.</p>{% endif %}
+  <p><a class="btn small" href="/employees">Team →</a> <a class="btn small" href="/customers">Customers →</a></p>
+  <h2>Sales</h2>
+  {% if flash %}<p><b>Sale on now:</b> {% for f in flash %}{{ f['item'] }} ({{ f['discount'] }}){% if not loop.last %}, {% endif %}{% endfor %} <a href="/growth">Details →</a></p>
+  {% else %}<p class="muted">No sale running. <a href="/growth">Growth →</a></p>{% endif %}
+  {% if reten %}<p><b>{{ reten|length }} customers</b> haven't ordered in 15+ days — reminder tasks made automatically.</p>{% endif %}
+  {% if groups %}<p><b>Group deals open:</b> {% for gb in groups %}{{ gb['title'] }}{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+  <p class="muted">Khata pending: Rs {{ khata_total }}</p>
+</div>
 </div>
 
 <div class="panel">
-  <h2>📊 Status & Priority</h2>
-  <p>{% for s,c in by_status.items() %}<span class="pill">{{ s }}: {{ c }}</span> {% endfor %}</p>
-  <p>{% for p,c in by_priority.items() %}<span class="pill {{ p }}">{{ p }}: {{ c }}</span> {% endfor %}</p>
-
-  <h2>🤖 AI restock suggestion <small class="muted">(from recent orders + low stock)</small></h2>
-  {% if forecast.top_items %}<ul class="list">{% for item,n in forecast.top_items %}<li>{{ item }} <span class="pill">×{{ n }} orders</span></li>{% endfor %}</ul>
-  {% else %}<p class="muted">Not enough order history yet — add orders to generate suggestions.</p>{% endif %}
-  {% if forecast.low_stock %}<p class="muted">Restock now: {% for l in forecast.low_stock %}<b>{{ l['name'] }}</b> ({{ l['stock_qty'] }} {{ l['unit'] }}){% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
-
-  <h2>👥 Productivity by member</h2>
-  <table><tr><th>Name</th><th>Total</th><th>Done</th><th>Pending</th><th>Overdue</th><th>Rate</th></tr>
-  {% for e in per_employee %}
-  <tr><td>{{ e.name }}<br><small>{{ e.role }}</small></td><td>{{ e.total }}</td><td>{{ e.done }}</td><td>{{ e.pending }}</td><td>{{ e.overdue }}</td><td>{{ e.rate }}%</td></tr>
-  {% endfor %}</table>
-  <h2>🕘 Recent tasks</h2>
-  <ul class="list">{% for t in recent %}<li><b>{{ t['title'] }}</b> — {{ t['status'] }} • {{ t['employee_name'] or 'Unassigned' }}</li>{% endfor %}</ul>
-  <p><a class="btn" href="/tasks">Manage all tasks →</a> <a class="btn" href="/orders">Fulfillment →</a> <a class="btn" href="/checklists">Daily checklist →</a></p>
-
-  <h2>🚀 Revenue engine</h2>
-  <p class="muted">Flash sales active: <b>{{ flash|length }}</b> • Retention due: <b>{{ reten|length }}</b> • Open group buys: <b>{{ groups|length }}</b> • Khata outstanding: <b>Rs {{ khata_total }}</b></p>
-  {% if flash %}<ul class="list">{% for f in flash %}<li><b>{{ f['item'] }}</b> — {{ f['discount'] }} <small>{{ f['message'] }}</small></li>{% endfor %}</ul>{% endif %}
-  {% if reten %}<p><span class="pill Overdue">{{ reten|length }} customers need check-in</span> <a class="btn small" href="/growth">Retention →</a></p>{% endif %}
-  {% if groups %}<ul class="list">{% for gb in groups %}<li><b>{{ gb['title'] }}</b> — {{ gb['item'] }} ({{ gb['joined_qty'] }}/{{ gb['target_qty'] }})</li>{% endfor %}</ul>{% endif %}
-  <p><a class="btn" href="/growth">Open growth hub →</a></p>
-</div>
+  <h2>Latest tasks</h2>
+  <ul class="list">{% for t in recent %}<li>{{ t['title'] }} — {{ t['status'] }} ({{ t['employee_name'] or 'Nobody' }})</li>{% endfor %}</ul>
+  <p><a class="btn" href="/tasks">All tasks →</a></p>
 </div>
 {% endblock %}
