@@ -8,7 +8,7 @@
 </head>
 <body>
 <nav class="topnav">
-  <a class="brand" href="/">🏪 TaskFlow <span>Small Business · Grocery focus</span></a>
+  <a class="brand" href="/">TaskFlow <span>for small shops & grocery stores</span></a>
   <div class="links">
     <a href="/" class="{{ 'active' if request.path=='/' else '' }}">Dashboard</a>
     <a href="/tasks" class="{{ 'active' if request.path.startswith('/tasks') else '' }}">Tasks</a>
@@ -25,7 +25,7 @@
 <main class="container">
 {% block content %}{% endblock %}
 </main>
-<footer><p>TaskFlow MVP • FITFEST 2026 • Small Business Workflow &amp; Task Management Platform — micro-grocery focus • Flask + SQLite • Cloud Run ready</p></footer>
+<footer><p>TaskFlow • FITFEST 2026 • Simple task manager for small businesses</p></footer>
 <script>
 // Offline-first: indicator + draft persistence for textareas/inputs
 function updateOnline(){ document.getElementById('offline-bar').hidden = navigator.onLine; }
