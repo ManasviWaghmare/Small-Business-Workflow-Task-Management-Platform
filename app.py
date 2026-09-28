@@ -362,6 +362,18 @@ def run_retention_tasks(db, days=15):
 def healthz(): return "ok", 200
 
 
+@app.errorhandler(404)
+def _not_found(e):
+    return redirect(url_for("dashboard"))
+
+
+@app.errorhandler(405)
+def _method_not_allowed(e):
+    # Form-action URLs (e.g. /orders/add) opened or refreshed directly
+    # only accept POST — send the user back instead of an error page.
+    return redirect(request.referrer or url_for("dashboard"))
+
+
 @app.route("/uploads/<path:name>")
 def uploaded(name):
     return send_from_directory(UPLOAD_DIR, name)
